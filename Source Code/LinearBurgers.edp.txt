@@ -1,0 +1,68 @@
+// Define domain and mesh
+real L = 1.0; // Define domain size
+int N = 50; // Number of elements
+mesh Th = square(N,N,[L,L]); // Define mesh
+
+// Define finite element space for velocity u
+fespace Vh(Th, P2);
+Vh [u1,u2], [v1,v2]; // Define velocity components
+
+// Define finite element space for pressure p
+fespace Qh(Th, P1);
+Qh p; // Define pressure
+
+// Define trial and test functions for velocity
+varf Stokes([u1,u2],[v1,v2])
+    = int2d(Th)(dx(u1)*dx(v1) + dy(u2)*dy(v2)) // Laplacian term
+    + int2d(Th)(-p*(dx(v1) + dy(v2))) // Pressure term
+    + int2d(Th)(div([u1,u2])*div([v1,v2])); // Continuity term
+
+// Define trial and test functions for pressure
+varf Continuity(p,q) = int2d(Th)(q*div([u1,u2]));
+
+// Define boundary conditions for velocity
+constraint StokesBCs { 
+    u1 = 0; u2 = 0; // Velocity is zero on the boundary
+}
+
+// Define boundary conditions for pressure
+constraint ContinuityBCs {
+    p = 0; // Pressure is zero on the boundary
+}
+
+// Solve Stokes equation for velocity u and pressure p
+matrix A = Stokes( [u1,u2], [v1,v2] ) + Continuity(p,p);
+matrix B = Continuity(p,0);
+real[int] rhs = StokesBCs + ContinuityBCs;
+
+// Solve the system
+[ [u1,u2], [p] ] = A(rhs,B);
+
+// Define finite element space for scalar function phi
+fespace Wh(Th, P1);
+Wh phi, v; // Define scalar function phi and test function v
+
+// Define transport velocity u from Stokes solution
+func real u_x = u1;
+func real u_y = u2;
+
+// Define constants
+real dt = 0.1; // Time step
+real tmax = 1.0; // Maximum time
+int num_steps = tmax / dt; // Number of time steps
+
+// Loop over time steps
+for (int i = 0; i < num_steps; ++i) {
+    // Define weak formulation of advection-diffusion equation for phi
+    varf AdvectionDiffusion([phi],[v])
+        = int2d(Th)( phi*v ) // Current time step
+        - int2d(Th)( phi* v + u_x * dx(v) + u_y * dy(v) ); // Advection term using Euler forward scheme
+
+    // Solve the system
+    matrix A_phi = AdvectionDiffusion([phi],[v]);
+    real[int] rhs_phi = 0;
+    phi = A_phi(rhs_phi);
+    
+    // Output solution for visualization or further analysis
+    // Output results for each time step or save to file
+}

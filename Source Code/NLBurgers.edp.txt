@@ -1,0 +1,63 @@
+//Burgers equation in weak formulation for space + Forward Euler scheme for time
+
+
+real N = 100;
+real dt = 10.0/N; // Time step
+int i=0;
+real alpha=1/dt;
+real nu = 0.1; // Set nu = 0.001
+real xs = -3, ys = 1.5; // Coordinates for the initial condition\
+
+
+
+real X1 = 1.5; 
+real Y1 = 1;   
+real X2 = 4;   
+real Y2 = 2;   
+
+real vl = 4/(Y2-Y1)^2;
+
+
+border a(t=0,1){x=X1; y=Y1*t;}        // Border from (X1,0) to (X1,Y1)
+border b(t=0,1){x=X1+(X2-X1)*t; y=Y1;} // Border from (X1,Y1) to (X2,Y1)
+border c(t=0,1){x=X2; y=Y1+(Y2-Y1)*t;} // Border from (X2,Y1) to (X2,Y2)
+border d(t=0,1){x=X2-(2*X2)*t; y=Y2;}   // Border from (X2,Y2) to (-X2,Y2)
+border e(t=0,1){x=-X2; y=Y2-(Y2-Y1)*t;} // Border from (-X2,Y2) to (-X2,Y1)
+border f(t=0,1){x=-X2+(X2-X1)*t; y=Y1;} // Border from (-X2,Y1) to (-X1,Y1)
+border g(t=0,1){x=-X1; y=Y1*(1-t);}    // Border from (-X1,Y1) to (-X1,0)
+border h(t=0,1){x=-X1+(2*X1)*t; y=0;}   // Border from (-X1,0) to (X1,0)
+
+mesh Th=buildmesh( a(N)+b(N)+c(N)+d(N)+e(N)+f(N)+g(N)+h(N) );
+
+fespace Vh(Th,P2);
+Vh u,v;
+Vh uh,vh;
+Vh u1, u2;
+Vh un;
+
+
+
+
+fespace Ph(Th,P1);
+Ph p;
+
+
+problem Stokes(u,v)
+    = int2d(Th)(dx(u)*dx(v) + dy(u)*dy(v)) 
+    - int2d(Th)(dx(p)*v+dy(p)*v);
+
+
+
+problem BG (uh,vh,real un, solver=Crout, init=i)
+    = int2d(Th)(uh*vh) - int2d(Th)(un*vh) + int2d(Th)( nu*dt* (dx(un)*dx(vh) + dy(un)*dy(vh)) ) + int2d(Th)( dt*vh*(u1*dx(un)+u2*dy(un)))
+    ;
+
+// Time loop
+un = exp(-10 * ((x - xs)^2 + (y - ys)^2))
+for (i = 0; i <= 100; i++){
+    // Solve
+    un = uh;
+
+    plot(coef=0.2,fill=1,un,wait=0,ps="nlplot.eps");
+}
+
